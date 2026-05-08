@@ -1,6 +1,8 @@
 #include "SampleInterfaces.h"
 
-#include "SDL_opengl.h"
+#ifndef RECASTNAVIGATION_HEADLESS
+#	include "SDL_opengl.h"
+#endif
 
 #include <algorithm>
 #include <cstdarg>
@@ -137,6 +139,12 @@ const char* BuildContext::getLogText(const int i) const
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// The OpenGL-backed DebugDrawGL implementation is only needed by the demo
+// (Sample.cpp / Sample_SoloMesh.cpp / Tool_*.cpp). Headless consumers such as
+// the PyNavmesh extension don't link those translation units, so we can drop
+// the whole block (and its OpenGL dependency) under RECASTNAVIGATION_HEADLESS.
+#ifndef RECASTNAVIGATION_HEADLESS
+
 class GLCheckerTexture
 {
 	unsigned int textureId = 0;
@@ -261,6 +269,8 @@ void DebugDrawGL::end()
 	glLineWidth(1.0f);
 	glPointSize(1.0f);
 }
+
+#endif  // RECASTNAVIGATION_HEADLESS
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

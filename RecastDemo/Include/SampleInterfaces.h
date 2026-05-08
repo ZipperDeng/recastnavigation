@@ -57,6 +57,9 @@ protected:
 };
 
 /// OpenGL debug draw implementation.
+/// Only available in non-headless builds (the demo executable). Headless
+/// consumers such as the PyNavmesh extension don't pull this in.
+#ifndef RECASTNAVIGATION_HEADLESS
 class DebugDrawGL : public duDebugDraw
 {
 public:
@@ -69,6 +72,7 @@ public:
 	void vertex(float x, float y, float z, unsigned int color, float u, float v) override;
 	void end() override;
 };
+#endif  // RECASTNAVIGATION_HEADLESS
 
 /// stdio file implementation.
 class FileIO final : public duFileIO

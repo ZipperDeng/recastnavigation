@@ -117,3 +117,68 @@ install(FILES Bin/DroidSans.ttf DESTINATION bin)
 if(WIN32)
 	install(FILES "${SDL2_RUNTIME_LIBRARY}" DESTINATION bin)
 endif()
+
+# ----------------------------------------------------------------------------
+# Optional Python binding target (PyNavmesh)
+# Builds a Python extension module (.pyd on Windows, .so on Linux/macOS) that
+# exposes the GUI-free Navmesh wrapper. The module has NO dependency on
+# SDL2 / OpenGL / imgui / DebugDraw GL backend — only Recast / Detour core
+# plus a handful of demo-shared source files (geometry loader, BuildContext).
+# ----------------------------------------------------------------------------
+option(RECASTNAVIGATION_PYTHON_BINDING "Build PyNavmesh Python extension module" OFF)
+
+if(RECASTNAVIGATION_PYTHON_BINDING)
+	# pybind11 (and STL types passed through it) require C++ exceptions to be
+	# enabled. The root CMakeLists.txt globally disables them via /EHs-c- on
+	# MSVC and -fno-exceptions on GCC/Clang, which we have to undo here.
+	# Note: this also re-enables exceptions for RecastDemo when this option is
+	# on, which is harmless.
+	if(MSVC)
+		string(REPLACE "/EHs-c-" "/EHsc" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	else()
+		string(REPLACE "-fno-exceptions" "-fexceptions" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	endif()
+
+	find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+	find_package(pybind11 CONFIG REQUIRED)
+
+	# Sources kept to the minimum required by Navmesh.cpp:
+	#   * PyNavmesh.cpp / Navmesh.cpp -- the binding itself
+	#   * InputGeom.cpp / PartitionedMesh.cpp -- OBJ loader + BVH for raycastMesh
+	#   * SampleInterfaces.cpp -- BuildContext / FileIO (DebugDrawGL is stubbed
+	#     to no-ops via RECASTNAVIGATION_HEADLESS, see file)
+	#   * PerfTimer.cpp -- backing implementation for BuildContext timers
+	pybind11_add_module(PyNavmesh MODULE
+		Source/PyNavmesh.cpp
+		Source/Navmesh.cpp
+		Source/InputGeom.cpp
+		Source/PartitionedMesh.cpp
+		Source/SampleInterfaces.cpp
+		Source/PerfTimer.cpp
+	)
+
+	target_include_directories(PyNavmesh PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/Include
+	)
+
+	target_compile_definitions(PyNavmesh PRIVATE RECASTNAVIGATION_HEADLESS)
+
+	set_target_properties(PyNavmesh PROPERTIES
+		CXX_STANDARD 20
+		CXX_STANDARD_REQUIRED ON
+		CXX_EXTENSIONS OFF
+	)
+
+	target_link_libraries(PyNavmesh PRIVATE
+		RecastNavigation::DebugUtils
+		RecastNavigation::Detour
+		RecastNavigation::DetourCrowd
+		RecastNavigation::DetourTileCache
+		RecastNavigation::Recast
+	)
+
+	install(TARGETS PyNavmesh
+		LIBRARY DESTINATION ${Python3_SITEARCH}
+		RUNTIME DESTINATION ${Python3_SITEARCH}
+	)
+endif()
